@@ -1,0 +1,338 @@
+<html><head><base href="https://websimcalc.org/">
+<meta charset="UTF-8">
+<title>科学计算器 | WebSim</title>
+<style>
+:root {
+  --primary: #2196F3;
+  --dark: #1976D2;
+  --light: #BBDEFB;
+  --text: #212121;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  background: #fafafa;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.calculator {
+  width: 320px;
+  margin: 50px auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.display {
+  background: var(--dark);
+  color: white;
+  padding: 20px;
+  text-align: right;
+  font-size: 24px;
+  min-height: 100px;
+}
+
+.history {
+  font-size: 14px;
+  opacity: 0.7;
+  margin-bottom: 5px;
+  min-height: 20px;
+}
+
+.buttons {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+  background: #eee;
+  padding: 1px;
+}
+
+button {
+  border: none;
+  outline: none;
+  background: white;
+  padding: 15px 10px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+button:hover {
+  background: var(--light);
+}
+
+.operator {
+  background: #f5f5f5;
+}
+
+.equals {
+  background: var(--primary);
+  color: white;
+}
+
+.equals:hover {
+  background: var(--dark);
+}
+
+.function {
+  background: #eeeeee;
+}
+
+</style>
+</head>
+<body>
+
+<div class="calculator">
+  <div class="display">
+    <div class="history" id="history"></div>
+    <div class="current" id="current">0</div>
+  </div>
+  
+  <div class="buttons">
+    <!-- 第一行 -->
+    <button class="function" data-action="2nd">2ⁿᵈ</button>
+    <button class="function" data-action="pi">π</button>
+    <button class="function" data-action="e">e</button>
+    <button class="function" data-action="clear">C</button>
+    <button class="function" data-action="backspace">←</button>
+    
+    <!-- 第二行 -->
+    <button class="function" data-action="square">x²</button>
+    <button class="function" data-action="reciprocal">1/x</button>
+    <button class="function" data-action="abs">|x|</button>
+    <button class="function" data-action="exp">exp</button>
+    <button class="operator" data-action="divide">÷</button>
+    
+    <!-- 第三行 -->
+    <button class="function" data-action="sqrt">√x</button>
+    <button class="number">7</button>
+    <button class="number">8</button>
+    <button class="number">9</button>
+    <button class="operator" data-action="multiply">×</button>
+    
+    <!-- 第四行 -->
+    <button class="function" data-action="cube">x³</button>
+    <button class="number">4</button>
+    <button class="number">5</button>
+    <button class="number">6</button>
+    <button class="operator" data-action="subtract">-</button>
+    
+    <!-- 第五行 -->
+    <button class="function" data-action="cbrt">∛x</button>
+    <button class="number">1</button>
+    <button class="number">2</button>
+    <button class="number">3</button>
+    <button class="operator" data-action="add">+</button>
+    
+    <!-- 第六行 -->
+    <button class="function" data-action="ln">ln</button>
+    <button class="function" data-action="negate">+/-</button>
+    <button class="number">0</button>
+    <button class="number" data-action="decimal">.</button>
+    <button class="equals" data-action="equals">=</button>
+  </div>
+</div>
+
+<script>
+class Calculator {
+  constructor(currentElement, historyElement) {
+    this.currentElement = currentElement;
+    this.historyElement = historyElement;
+    this.clear();
+  }
+
+  clear() {
+    this.current = '0';
+    this.previous = '';
+    this.operation = undefined;
+    this.shouldResetScreen = false;
+    this.updateDisplay();
+  }
+
+  appendNumber(number) {
+    if (this.shouldResetScreen) {
+      this.current = number.toString();
+      this.shouldResetScreen = false;
+    } else {
+      this.current = this.current === '0' ? number.toString() : this.current + number;
+    }
+    this.updateDisplay();
+  }
+
+  appendDecimal() {
+    if (this.shouldResetScreen) {
+      this.current = '0.';
+      this.shouldResetScreen = false;
+    } else if (!this.current.includes('.')) {
+      this.current += '.';
+    }
+    this.updateDisplay();
+  }
+
+  delete() {
+    this.current = this.current.toString().slice(0, -1);
+    if (this.current === '') this.current = '0';
+    this.updateDisplay();
+  }
+
+  chooseOperation(operation) {
+    if (this.current === '') return;
+    if (this.previous !== '') {
+      this.compute();
+    }
+    this.operation = operation;
+    this.previous = this.current;
+    this.shouldResetScreen = true;
+    this.updateHistory();
+  }
+
+  compute() {
+    let computation;
+    const prev = parseFloat(this.previous);
+    const current = parseFloat(this.current);
+    if (isNaN(prev) || isNaN(current)) return;
+
+    switch (this.operation) {
+      case '+':
+        computation = prev + current;
+        break;
+      case '-':
+        computation = prev - current;
+        break;
+      case '×':
+        computation = prev * current;
+        break;
+      case '÷':
+        computation = prev / current;
+        break;
+      default:
+        return;
+    }
+
+    this.current = computation.toString();
+    this.operation = undefined;
+    this.previous = '';
+    this.updateHistory(`${prev} ${this.operation} ${current} = ${computation}`);
+  }
+
+  specialFunction(action) {
+    let result;
+    const number = parseFloat(this.current);
+
+    switch (action) {
+      case 'square':
+        result = Math.pow(number, 2);
+        break;
+      case 'sqrt':
+        result = Math.sqrt(number);
+        break;
+      case 'cube':
+        result = Math.pow(number, 3);
+        break;
+      case 'cbrt':
+        result = Math.cbrt(number);
+        break;
+      case 'reciprocal':
+        result = 1 / number;
+        break;
+      case 'abs':
+        result = Math.abs(number);
+        break;
+      case 'negate':
+        result = -number;
+        break;
+      case 'ln':
+        result = Math.log(number);
+        break;
+      case 'pi':
+        result = Math.PI;
+        break;
+      case 'e':
+        result = Math.E;
+        break;
+      default:
+        return;
+    }
+
+    this.current = result.toString();
+    this.updateDisplay();
+  }
+
+  updateDisplay() {
+    this.currentElement.textContent = this.current;
+    if (this.current.length > 12) {
+      this.currentElement.textContent = parseFloat(this.current).toExponential(6);
+    }
+  }
+
+  updateHistory(text = '') {
+    if (text) {
+      this.historyElement.textContent = text;
+    } else if (this.operation) {
+      this.historyElement.textContent = `${this.previous} ${this.operation}`;
+    } else {
+      this.historyElement.textContent = '';
+    }
+  }
+}
+
+const calculator = new Calculator(
+  document.getElementById('current'),
+  document.getElementById('history')
+);
+
+document.querySelector('.buttons').addEventListener('click', e => {
+  const button = e.target;
+  if (!button.matches('button')) return;
+
+  if (button.classList.contains('number')) {
+    calculator.appendNumber(button.textContent);
+  }
+  else if (button.classList.contains('operator')) {
+    calculator.chooseOperation(button.textContent);
+  }
+  else if (button.classList.contains('equals')) {
+    calculator.compute();
+  }
+  else if (button.classList.contains('function')) {
+    const action = button.dataset.action;
+    switch (action) {
+      case 'clear':
+        calculator.clear();
+        break;
+      case 'backspace':
+        calculator.delete();
+        break;
+      case 'decimal':
+        calculator.appendDecimal();
+        break;
+      default:
+        calculator.specialFunction(action);
+    }
+  }
+});
+
+// 添加键盘支持
+document.addEventListener('keydown', e => {
+  if (e.key >= '0' && e.key <= '9') calculator.appendNumber(e.key);
+  if (e.key === '.') calculator.appendDecimal();
+  if (e.key === '=' || e.key === 'Enter') calculator.compute();
+  if (e.key === 'Backspace') calculator.delete();
+  if (e.key === 'Escape') calculator.clear();
+  if (e.key === '+') calculator.chooseOperation('+');
+  if (e.key === '-') calculator.chooseOperation('-');
+  if (e.key === '*') calculator.chooseOperation('×');
+  if (e.key === '/') calculator.chooseOperation('÷');
+});
+</script>
+
+</body>
+</html>
